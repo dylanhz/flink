@@ -18,14 +18,13 @@
 
 package org.apache.flink.sql.parser;
 
-import org.apache.flink.sql.parser.error.SqlValidateException;
-import org.apache.flink.sql.parser.impl.FlinkSqlParserImpl;
-
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParserFixture;
 import org.apache.calcite.sql.parser.SqlParserTest;
 import org.apache.calcite.sql.validate.SqlConformanceEnum;
+import org.apache.flink.sql.parser.error.SqlValidateException;
+import org.apache.flink.sql.parser.impl.FlinkSqlParserImpl;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.TypeSafeDiagnosingMatcher;
@@ -3863,5 +3862,13 @@ class FlinkSqlParserImplTest extends SqlParserTest {
 
         sql("CREATE TABLE t (\n" + "v VARIANT NOT NULL" + "\n)")
                 .ok("CREATE TABLE `T` (\n" + "  `V` VARIANT NOT NULL\n" + ")");
+    }
+
+    @Test
+    void testBitmapType() {
+        sql("CREATE TABLE t (\n" + "bm bitmap" + "\n)")
+                .ok("CREATE TABLE `T` (\n" + "  `BM` BITMAP\n" + ")");
+        sql("CREATE TABLE t (\n" + "bm bitmap NOT NULL" + "\n)")
+                .ok("CREATE TABLE `T` (\n" + "  `BM` BITMAP NOT NULL\n" + ")");
     }
 }
