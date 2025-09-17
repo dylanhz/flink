@@ -5807,6 +5807,8 @@ SqlTypeNameSpec SqlTypeName1(Span s) :
         <FLOAT> { s.add(this); sqlTypeName = SqlTypeName.FLOAT; }
     |
         <VARIANT> { s.add(this); sqlTypeName = SqlTypeName.VARIANT; }
+    |
+        <BITMAP> { s.add(this); sqlTypeName = SqlTypeName.BITMAP; }
     )
     {
         return new SqlBasicTypeNameSpec(sqlTypeName, s.end(this));
@@ -7976,6 +7978,7 @@ SqlPostfixOperator PostfixRowOperator() :
 |   < BIGINT: "BIGINT" >
 |   < BINARY: "BINARY" >
 |   < BIT: "BIT" >
+|   < BITMAP: "BITMAP" >
 |   < BLOB: "BLOB" >
 |   < BOOLEAN: "BOOLEAN" >
 |   < BOTH: "BOTH" >

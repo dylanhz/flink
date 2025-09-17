@@ -3557,6 +3557,14 @@ class FlinkSqlParserImplTest extends SqlParserTest {
                 .ok("CREATE TABLE `T` (\n" + "  `V` VARIANT NOT NULL\n" + ")");
     }
 
+    @Test
+    void testBitmapType() {
+        sql("CREATE TABLE t (\n" + "bm bitmap" + "\n)")
+                .ok("CREATE TABLE `T` (\n" + "  `BM` BITMAP\n" + ")");
+        sql("CREATE TABLE t (\n" + "bm bitmap NOT NULL" + "\n)")
+                .ok("CREATE TABLE `T` (\n" + "  `BM` BITMAP NOT NULL\n" + ")");
+    }
+
     /** Matcher that invokes the #validate() of the {@link ExtendedSqlNode} instance. * */
     private static class ValidationMatcher extends BaseMatcher<SqlNode> {
         private String expectedColumnSql;
