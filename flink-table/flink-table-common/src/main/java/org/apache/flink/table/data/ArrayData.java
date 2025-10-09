@@ -22,6 +22,7 @@ import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.table.types.logical.ArrayType;
 import org.apache.flink.table.types.logical.DistinctType;
 import org.apache.flink.table.types.logical.LogicalType;
+import org.apache.flink.types.bitmap.Bitmap;
 import org.apache.flink.types.variant.Variant;
 
 import javax.annotation.Nullable;
@@ -115,6 +116,9 @@ public interface ArrayData {
      * <p>The number of fields is required to correctly extract the row.
      */
     RowData getRow(int pos, int numFields);
+
+    /** Returns the bitmap value at the given position. */
+    Bitmap getBitmap(int pos);
 
     // ------------------------------------------------------------------------------------------
     // Conversion Utilities
@@ -214,6 +218,9 @@ public interface ArrayData {
                 break;
             case VARIANT:
                 elementGetter = ArrayData::getVariant;
+                break;
+            case BITMAP:
+                elementGetter = ArrayData::getBitmap;
                 break;
             case NULL:
             case SYMBOL:

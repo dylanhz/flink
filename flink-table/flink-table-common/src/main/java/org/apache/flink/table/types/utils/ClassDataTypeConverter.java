@@ -25,9 +25,11 @@ import org.apache.flink.table.expressions.TableSymbol;
 import org.apache.flink.table.types.AtomicDataType;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.extraction.DataTypeExtractor;
+import org.apache.flink.table.types.logical.BitmapType;
 import org.apache.flink.table.types.logical.SymbolType;
 import org.apache.flink.types.ColumnList;
 import org.apache.flink.types.Row;
+import org.apache.flink.types.bitmap.Bitmap;
 import org.apache.flink.types.variant.BinaryVariant;
 import org.apache.flink.types.variant.Variant;
 
@@ -110,6 +112,8 @@ public final class ClassDataTypeConverter {
 
         if (TableSymbol.class.isAssignableFrom(clazz)) {
             return Optional.of(new AtomicDataType(new SymbolType<>(), clazz));
+        } else if (Bitmap.class.isAssignableFrom(clazz)) {
+            return Optional.of(new AtomicDataType(new BitmapType(), Bitmap.class));
         }
 
         return Optional.ofNullable(defaultDataTypes.get(clazz.getName()));

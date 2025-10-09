@@ -24,6 +24,7 @@ import org.apache.flink.table.types.logical.BinaryType;
 import org.apache.flink.table.types.logical.CharType;
 import org.apache.flink.table.types.logical.SymbolType;
 import org.apache.flink.table.types.utils.ValueDataTypeConverter;
+import org.apache.flink.types.bitmap.Bitmap;
 import org.apache.flink.types.variant.BinaryVariant;
 import org.apache.flink.types.variant.Variant;
 
@@ -117,7 +118,9 @@ class ValueDataTypeConverterTest {
                 of(new BigDecimal[0], null),
                 of(
                         Variant.newBuilder().of("hello"),
-                        DataTypes.VARIANT().bridgedTo(BinaryVariant.class)));
+                        DataTypes.VARIANT().bridgedTo(BinaryVariant.class)),
+                of(Bitmap.empty(), DataTypes.BITMAP()),
+                of(Bitmap.fromArray(new int[] {1, 2}), DataTypes.BITMAP()));
     }
 
     @ParameterizedTest(name = "[{index}] value: {0} type: {1}")

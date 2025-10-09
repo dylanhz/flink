@@ -31,6 +31,7 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.types.Row;
+import org.apache.flink.types.bitmap.Bitmap;
 import org.apache.flink.types.variant.Variant;
 
 import java.math.BigDecimal;
@@ -196,6 +197,7 @@ public final class DataStructureConverters {
         putConverter(LogicalTypeRoot.RAW, byte[].class, RawByteArrayConverter::create);
         putConverter(LogicalTypeRoot.RAW, RawValueData.class, identity());
         putConverter(LogicalTypeRoot.VARIANT, Variant.class, identity());
+        putConverter(LogicalTypeRoot.BITMAP, Bitmap.class, identity());
     }
 
     /** Returns a converter for the given {@link DataType}. */

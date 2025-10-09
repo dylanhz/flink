@@ -25,6 +25,7 @@ import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.table.types.logical.StructuredType;
 import org.apache.flink.types.RowKind;
+import org.apache.flink.types.bitmap.Bitmap;
 import org.apache.flink.types.variant.Variant;
 
 import javax.annotation.Nullable;
@@ -205,6 +206,9 @@ public interface RowData {
     /** Returns the variant value at the given position. */
     Variant getVariant(int pos);
 
+    /** Returns the bitmap value at the given position. */
+    Bitmap getBitmap(int pos);
+
     // ------------------------------------------------------------------------------------------
     // Access Utilities
     // ------------------------------------------------------------------------------------------
@@ -286,6 +290,9 @@ public interface RowData {
                 break;
             case VARIANT:
                 fieldGetter = row -> row.getVariant(fieldPos);
+                break;
+            case BITMAP:
+                fieldGetter = row -> row.getBitmap(fieldPos);
                 break;
             case NULL:
             case SYMBOL:

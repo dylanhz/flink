@@ -20,11 +20,13 @@ package org.apache.flink.table.types.utils;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.types.AbstractDataType;
 import org.apache.flink.table.types.AtomicDataType;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.BinaryType;
 import org.apache.flink.table.types.logical.CharType;
 import org.apache.flink.table.types.logical.LogicalTypeFamily;
+import org.apache.flink.types.bitmap.Bitmap;
 import org.apache.flink.types.variant.Variant;
 
 import java.math.BigDecimal;
@@ -93,6 +95,10 @@ public final class ValueDataTypeConverter {
                     .map(dt -> dt.notNull().bridgedTo(value.getClass()));
         } else if (value instanceof Variant) {
             convertedDataType = DataTypes.VARIANT();
+        } else if (value instanceof Bitmap) {
+            convertedDataType = DataTypes.BITMAP();
+            // use interface class as the conversion class
+            return Optional.of(convertedDataType).map(AbstractDataType::notNull);
         }
 
         final Optional<DataType> resultType;

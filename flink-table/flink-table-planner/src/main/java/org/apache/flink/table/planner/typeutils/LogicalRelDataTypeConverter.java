@@ -28,6 +28,7 @@ import org.apache.flink.table.planner.plan.schema.TimeIndicatorRelDataType;
 import org.apache.flink.table.types.logical.ArrayType;
 import org.apache.flink.table.types.logical.BigIntType;
 import org.apache.flink.table.types.logical.BinaryType;
+import org.apache.flink.table.types.logical.BitmapType;
 import org.apache.flink.table.types.logical.BooleanType;
 import org.apache.flink.table.types.logical.CharType;
 import org.apache.flink.table.types.logical.DateType;
@@ -460,6 +461,11 @@ public final class LogicalRelDataTypeConverter {
         }
 
         @Override
+        public RelDataType visit(BitmapType bitmapType) {
+            return relDataTypeFactory.createSqlType(SqlTypeName.BITMAP);
+        }
+
+        @Override
         public RelDataType visit(LogicalType other) {
             throw new TableException(
                     String.format(
@@ -581,6 +587,8 @@ public final class LogicalRelDataTypeConverter {
                                 .collect(Collectors.toList()));
             case COLUMN_LIST:
                 return new DescriptorType(false);
+            case BITMAP:
+                return new BitmapType(false);
             case STRUCTURED:
             case OTHER:
                 if (relDataType instanceof StructuredRelDataType) {
