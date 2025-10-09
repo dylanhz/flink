@@ -260,6 +260,10 @@ public class SqlCastFunction extends SqlFunction {
         if (toType.getSqlTypeName() == SqlTypeName.VARIANT) {
             return false;
         }
+        // Cast to BITMAP is not support at the moment.
+        if (toType.getSqlTypeName() == SqlTypeName.BITMAP) {
+            return false;
+        }
         switch (fromTypeName) {
             case ARRAY:
             case MAP:
@@ -267,6 +271,7 @@ public class SqlCastFunction extends SqlFunction {
             case STRUCTURED:
             case ROW:
             case VARIANT:
+            case BITMAP:
             case OTHER:
                 // We use our casting checker logic only for these types,
                 //  as the differences with calcite casting checker logic generates issues

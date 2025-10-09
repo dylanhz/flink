@@ -50,6 +50,7 @@ import org.apache.flink.table.types.logical.TimestampType;
 import org.apache.flink.table.typeutils.TimeIndicatorTypeInfo;
 import org.apache.flink.table.typeutils.TimeIntervalTypeInfo;
 import org.apache.flink.types.Row;
+import org.apache.flink.types.bitmap.Bitmap;
 import org.apache.flink.util.Preconditions;
 
 import java.sql.Timestamp;
@@ -163,6 +164,7 @@ public final class LegacyTypeInfoDataTypeConverter {
                 PrimitiveArrayTypeInfo.DOUBLE_PRIMITIVE_ARRAY_TYPE_INFO,
                 DataTypes.ARRAY(DataTypes.DOUBLE().notNull().bridgedTo(double.class))
                         .bridgedTo(double[].class));
+        addMapping(Types.BITMAP, DataTypes.BITMAP().bridgedTo(Bitmap.class));
     }
 
     private static void addMapping(TypeInformation<?> typeInfo, DataType dataType) {

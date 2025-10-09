@@ -27,6 +27,7 @@ import org.apache.flink.table.types.logical.TimestampType;
 
 import static org.apache.flink.table.types.logical.LogicalTypeRoot.ARRAY;
 import static org.apache.flink.table.types.logical.LogicalTypeRoot.BIGINT;
+import static org.apache.flink.table.types.logical.LogicalTypeRoot.BITMAP;
 import static org.apache.flink.table.types.logical.LogicalTypeRoot.BOOLEAN;
 import static org.apache.flink.table.types.logical.LogicalTypeRoot.DECIMAL;
 import static org.apache.flink.table.types.logical.LogicalTypeRoot.INTEGER;
@@ -140,6 +141,10 @@ public class TypeCheckUtils {
         return type.getTypeRoot() == VARIANT;
     }
 
+    private static boolean isBitmapType(LogicalType type) {
+        return type.getTypeRoot() == BITMAP;
+    }
+
     public static boolean isComparable(LogicalType type) {
         return !isRaw(type)
                 && !isMap(type)
@@ -147,7 +152,8 @@ public class TypeCheckUtils {
                 && !isRow(type)
                 && !isArray(type)
                 && !isStructuredType(type)
-                && !isVariantType(type);
+                && !isVariantType(type)
+                && !isBitmapType(type);
     }
 
     public static boolean isMutable(LogicalType type) {
@@ -161,6 +167,7 @@ public class TypeCheckUtils {
             case ROW:
             case STRUCTURED_TYPE:
             case RAW:
+            case BITMAP:
                 return true;
             case TIMESTAMP_WITH_TIME_ZONE:
                 throw new UnsupportedOperationException("Unsupported type: " + type);

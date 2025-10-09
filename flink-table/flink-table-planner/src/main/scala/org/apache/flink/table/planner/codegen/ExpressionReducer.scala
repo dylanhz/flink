@@ -146,8 +146,8 @@ class ExpressionReducer(
             unreduced.getType.getSqlTypeName match {
               // we insert the original expression for object literals
               case SqlTypeName.ANY | SqlTypeName.OTHER | SqlTypeName.ROW | SqlTypeName.STRUCTURED |
-                  SqlTypeName.ARRAY | SqlTypeName.MAP | SqlTypeName.MULTISET |
-                  SqlTypeName.VARIANT =>
+                  SqlTypeName.ARRAY | SqlTypeName.MAP | SqlTypeName.MULTISET | SqlTypeName.VARIANT |
+                  SqlTypeName.BITMAP =>
                 reducedValues.add(unreduced)
               case SqlTypeName.VARCHAR | SqlTypeName.CHAR =>
                 val escapeVarchar = BinaryStringDataUtil.safeToString(
