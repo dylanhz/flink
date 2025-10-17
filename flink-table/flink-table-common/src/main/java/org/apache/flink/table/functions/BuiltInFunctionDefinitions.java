@@ -2997,6 +2997,32 @@ public final class BuiltInFunctionDefinitions {
                             "org.apache.flink.table.runtime.functions.scalar.BitmapLongCardinalityFunction")
                     .build();
 
+    public static final BuiltInFunctionDefinition BITMAP_TO_ARRAY =
+            BuiltInFunctionDefinition.newBuilder()
+                    .name("BITMAP_TO_ARRAY")
+                    .kind(SCALAR)
+                    .inputTypeStrategy(
+                            sequence(
+                                    Collections.singletonList("bitmap"),
+                                    Collections.singletonList(logical(LogicalTypeRoot.BITMAP))))
+                    .outputTypeStrategy(nullableIfArgs(explicit(DataTypes.ARRAY(DataTypes.INT()))))
+                    .runtimeClass(
+                            "org.apache.flink.table.runtime.functions.scalar.BitmapToArrayFunction")
+                    .build();
+
+    public static final BuiltInFunctionDefinition BITMAP_TO_STRING =
+            BuiltInFunctionDefinition.newBuilder()
+                    .name("BITMAP_TO_STRING")
+                    .kind(SCALAR)
+                    .inputTypeStrategy(
+                            sequence(
+                                    Collections.singletonList("bitmap"),
+                                    Collections.singletonList(logical(LogicalTypeRoot.BITMAP))))
+                    .outputTypeStrategy(nullableIfArgs(explicit(DataTypes.STRING())))
+                    .runtimeClass(
+                            "org.apache.flink.table.runtime.functions.scalar.BitmapToStringFunction")
+                    .build();
+
     // --------------------------------------------------------------------------------------------
     // Other functions
     // --------------------------------------------------------------------------------------------
