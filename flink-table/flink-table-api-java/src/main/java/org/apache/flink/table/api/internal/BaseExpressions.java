@@ -80,6 +80,8 @@ import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_BUILD_AGG;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_CARDINALITY;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_LONG_CARDINALITY;
+import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_TO_ARRAY;
+import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_TO_STRING;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BTRIM;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.CARDINALITY;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.CAST;
@@ -2586,5 +2588,23 @@ public abstract class BaseExpressions<InType, OutType> {
      */
     public OutType bitmapLongCardinality() {
         return toApiSpecificExpression(unresolvedCall(BITMAP_LONG_CARDINALITY, toExpr()));
+    }
+
+    /**
+     * Converts a bitmap to an array of 32-bit integers.
+     *
+     * @return an ARRAY&lt;INT&gt; expression
+     */
+    public OutType bitmapToArray() {
+        return toApiSpecificExpression(unresolvedCall(BITMAP_TO_ARRAY, toExpr()));
+    }
+
+    /**
+     * Converts a bitmap to a string.
+     *
+     * @return a STRING expression
+     */
+    public OutType bitmapToString() {
+        return toApiSpecificExpression(unresolvedCall(BITMAP_TO_STRING, toExpr()));
     }
 }
