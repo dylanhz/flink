@@ -2119,6 +2119,48 @@ class AggregateITCase(
 
     tEnv.dropTemporarySystemFunction("PERCENTILE")
   }
+
+  @TestTemplate
+  def testBitmapBuildAgg(): Unit = {
+    val data = new mutable.MutableList[(Int, Int, String)]
+    data.+=((-3, 5, "a"))
+    data.+=((7, 2, "b"))
+    data.+=((-3, 8, "c"))
+    data.+=((2, 1, "b"))
+    data.+=((2, 9, "a"))
+    data.+=((-8, 3, "c"))
+    data.+=((7, 6, "b"))
+    data.+=((0, 4, "a"))
+    data.+=((-3, 7, "c"))
+    data.+=((5, 0, "b"))
+    data.+=((0, 10, "a"))
+    data.+=((2, 2, "a"))
+
+    val sql =
+      """
+        |SELECT
+        |  c,
+        |  BITMAP_BUILD_AGG(a),
+        |  BITMAP_BUILD_AGG(b)
+        |FROM MyTable
+        |GROUP BY c
+      """.stripMargin
+
+    val t = failingDataSource(data).toTable(tEnv, 'a, 'b, 'c)
+    tEnv.createTemporaryView("MyTable", t)
+
+    val sink = new TestingRetractSink
+    tEnv.sqlQuery(sql).toRetractStream[Row].addSink(sink).setParallelism(1)
+    env.execute()
+
+    val expected =
+      List(
+        s"a,{0,2,${Integer.toUnsignedLong(-3)}},{2,4,5,9,10}",
+        "b,{2,5,7},{0,1,2,6}",
+        s"c,{${Integer.toUnsignedLong(-8)},${Integer.toUnsignedLong(-3)}},{3,7,8}"
+      )
+    assertThat(sink.getRetractResults.sorted).isEqualTo(expected.sorted)
+  }
 }
 
 object AggregateITCase {

@@ -77,6 +77,7 @@ import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.AVG;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BETWEEN;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BIN;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_BUILD;
+import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_BUILD_AGG;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BTRIM;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.CARDINALITY;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.CAST;
@@ -2556,5 +2557,14 @@ public abstract class BaseExpressions<InType, OutType> {
      */
     public OutType bitmapBuild() {
         return toApiSpecificExpression(unresolvedCall(BITMAP_BUILD, toExpr()));
+    }
+
+    /**
+     * Creates a bitmap from 32-bit integers.
+     *
+     * @return a BITMAP expression
+     */
+    public OutType bitmapBuildAgg() {
+        return toApiSpecificExpression(unresolvedCall(BITMAP_BUILD_AGG, toExpr()));
     }
 }
