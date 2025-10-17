@@ -78,6 +78,8 @@ import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BETWEE
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BIN;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_BUILD;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_BUILD_AGG;
+import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_CARDINALITY;
+import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_LONG_CARDINALITY;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BTRIM;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.CARDINALITY;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.CAST;
@@ -2566,5 +2568,23 @@ public abstract class BaseExpressions<InType, OutType> {
      */
     public OutType bitmapBuildAgg() {
         return toApiSpecificExpression(unresolvedCall(BITMAP_BUILD_AGG, toExpr()));
+    }
+
+    /**
+     * Returns the 32-bit cardinality of a bitmap.
+     *
+     * @return a INT expression
+     */
+    public OutType bitmapCardinality() {
+        return toApiSpecificExpression(unresolvedCall(BITMAP_CARDINALITY, toExpr()));
+    }
+
+    /**
+     * Returns the 64-bit cardinality of a bitmap.
+     *
+     * @return a BIGINT expression
+     */
+    public OutType bitmapLongCardinality() {
+        return toApiSpecificExpression(unresolvedCall(BITMAP_LONG_CARDINALITY, toExpr()));
     }
 }

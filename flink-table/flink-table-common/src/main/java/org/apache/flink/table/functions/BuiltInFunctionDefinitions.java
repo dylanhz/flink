@@ -2972,6 +2972,32 @@ public final class BuiltInFunctionDefinitions {
                     .runtimeProvided()
                     .build();
 
+    public static final BuiltInFunctionDefinition BITMAP_CARDINALITY =
+            BuiltInFunctionDefinition.newBuilder()
+                    .name("BITMAP_CARDINALITY")
+                    .kind(SCALAR)
+                    .inputTypeStrategy(
+                            sequence(
+                                    Collections.singletonList("bitmap"),
+                                    Collections.singletonList(logical(LogicalTypeRoot.BITMAP))))
+                    .outputTypeStrategy(nullableIfArgs(explicit(DataTypes.INT())))
+                    .runtimeClass(
+                            "org.apache.flink.table.runtime.functions.scalar.BitmapCardinalityFunction")
+                    .build();
+
+    public static final BuiltInFunctionDefinition BITMAP_LONG_CARDINALITY =
+            BuiltInFunctionDefinition.newBuilder()
+                    .name("BITMAP_LONG_CARDINALITY")
+                    .kind(SCALAR)
+                    .inputTypeStrategy(
+                            sequence(
+                                    Collections.singletonList("bitmap"),
+                                    Collections.singletonList(logical(LogicalTypeRoot.BITMAP))))
+                    .outputTypeStrategy(nullableIfArgs(explicit(DataTypes.BIGINT())))
+                    .runtimeClass(
+                            "org.apache.flink.table.runtime.functions.scalar.BitmapLongCardinalityFunction")
+                    .build();
+
     // --------------------------------------------------------------------------------------------
     // Other functions
     // --------------------------------------------------------------------------------------------

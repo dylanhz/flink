@@ -31,7 +31,11 @@ class BitmapFunctionsITCase extends BuiltInFunctionTestBase {
 
     @Override
     Stream<TestSetSpec> getTestSetSpecs() {
-        return Stream.of(bitmapBuildTestCases()).flatMap(s -> s);
+        return Stream.of(
+                        bitmapBuildTestCases(),
+                        bitmapCardinalityTestCases(),
+                        bitmapLongCardinalityTestCases())
+                .flatMap(s -> s);
     }
 
     private Stream<TestSetSpec> bitmapBuildTestCases() {
@@ -91,5 +95,84 @@ class BitmapFunctionsITCase extends BuiltInFunctionTestBase {
                                 "Invalid input arguments. Expected signatures are:\n"
                                         + "BITMAP_BUILD(array ARRAY<INT> NOT NULL)\n"
                                         + "BITMAP_BUILD(array ARRAY<INT>)"));
+    }
+
+    private Stream<TestSetSpec> bitmapCardinalityTestCases() {
+        return Stream.of(
+                TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_CARDINALITY)
+                        .onFieldsWithData(new Integer[] {-1}, new Integer[] {1, 2, 3, -4})
+                        .andDataTypes(
+                                DataTypes.ARRAY(DataTypes.INT()),
+                                DataTypes.ARRAY(DataTypes.INT()).notNull())
+                        // TODO null test
+                        // empty
+                        .testResult(
+                                $("f0").arrayRemove(-1).bitmapBuild().bitmapCardinality(),
+                                "BITMAP_CARDINALITY(BITMAP_BUILD(ARRAY_REMOVE(f0, -1)))",
+                                0,
+                                DataTypes.INT())
+                        // normal cases
+                        .testResult(
+                                $("f0").bitmapBuild().bitmapCardinality(),
+                                "BITMAP_CARDINALITY(BITMAP_BUILD(f0))",
+                                1,
+                                DataTypes.INT())
+                        .testResult(
+                                $("f1").bitmapBuild().bitmapCardinality(),
+                                "BITMAP_CARDINALITY(BITMAP_BUILD(f1))",
+                                4,
+                                DataTypes.INT().notNull()),
+                TestSetSpec.forFunction(
+                                BuiltInFunctionDefinitions.BITMAP_CARDINALITY, "Validation Error")
+                        .onFieldsWithData(1024, new int[] {1, 2})
+                        .andDataTypes(DataTypes.INT(), DataTypes.ARRAY(DataTypes.INT()))
+                        .testTableApiValidationError(
+                                $("f0").bitmapCardinality(),
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_CARDINALITY(bitmap <BITMAP>)")
+                        .testSqlValidationError(
+                                "BITMAP_CARDINALITY(f1)",
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_CARDINALITY(bitmap <BITMAP>)"));
+    }
+
+    private Stream<TestSetSpec> bitmapLongCardinalityTestCases() {
+        return Stream.of(
+                TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_LONG_CARDINALITY)
+                        .onFieldsWithData(new Integer[] {-1}, new Integer[] {1, 2, 3, -4})
+                        .andDataTypes(
+                                DataTypes.ARRAY(DataTypes.INT()),
+                                DataTypes.ARRAY(DataTypes.INT()).notNull())
+                        // TODO null test
+                        // empty
+                        .testResult(
+                                $("f0").arrayRemove(-1).bitmapBuild().bitmapLongCardinality(),
+                                "BITMAP_LONG_CARDINALITY(BITMAP_BUILD(ARRAY_REMOVE(f0, -1)))",
+                                0L,
+                                DataTypes.BIGINT())
+                        // normal cases
+                        .testResult(
+                                $("f0").bitmapBuild().bitmapLongCardinality(),
+                                "BITMAP_LONG_CARDINALITY(BITMAP_BUILD(f0))",
+                                1L,
+                                DataTypes.BIGINT())
+                        .testResult(
+                                $("f1").bitmapBuild().bitmapLongCardinality(),
+                                "BITMAP_LONG_CARDINALITY(BITMAP_BUILD(f1))",
+                                4L,
+                                DataTypes.BIGINT().notNull()),
+                TestSetSpec.forFunction(
+                                BuiltInFunctionDefinitions.BITMAP_LONG_CARDINALITY,
+                                "Validation Error")
+                        .onFieldsWithData(1024, new int[] {1, 2})
+                        .andDataTypes(DataTypes.INT(), DataTypes.ARRAY(DataTypes.INT()))
+                        .testTableApiValidationError(
+                                $("f0").bitmapLongCardinality(),
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_LONG_CARDINALITY(bitmap <BITMAP>)")
+                        .testSqlValidationError(
+                                "BITMAP_LONG_CARDINALITY(f1)",
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_LONG_CARDINALITY(bitmap <BITMAP>)"));
     }
 }
