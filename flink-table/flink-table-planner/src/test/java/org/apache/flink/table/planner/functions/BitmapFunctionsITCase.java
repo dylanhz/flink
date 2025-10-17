@@ -19,9 +19,13 @@
 package org.apache.flink.table.planner.functions;
 
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.TableRuntimeException;
 import org.apache.flink.table.functions.BuiltInFunctionDefinitions;
 import org.apache.flink.types.bitmap.Bitmap;
 
+import org.roaringbitmap.RoaringBitmap;
+
+import java.nio.ByteBuffer;
 import java.util.stream.Stream;
 
 import static org.apache.flink.table.api.Expressions.$;
@@ -34,8 +38,10 @@ class BitmapFunctionsITCase extends BuiltInFunctionTestBase {
         return Stream.of(
                         bitmapBuildTestCases(),
                         bitmapCardinalityTestCases(),
+                        bitmapFromBytesTestCases(),
                         bitmapLongCardinalityTestCases(),
                         bitmapToArrayTestCases(),
+                        bitmapToBytesTestCases(),
                         bitmapToStringTestCases())
                 .flatMap(s -> s);
     }
@@ -138,6 +144,68 @@ class BitmapFunctionsITCase extends BuiltInFunctionTestBase {
                                         + "BITMAP_CARDINALITY(bitmap <BITMAP>)"));
     }
 
+    private Stream<TestSetSpec> bitmapFromBytesTestCases() {
+        return Stream.of(
+                TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_FROM_BYTES)
+                        .onFieldsWithData(
+                                null,
+                                toSerializedBytes(),
+                                toSerializedBytes(-1),
+                                toSerializedBytes(1, 2, 3, -4))
+                        .andDataTypes(
+                                DataTypes.BYTES(),
+                                DataTypes.BYTES(),
+                                DataTypes.BYTES(),
+                                DataTypes.BYTES().notNull())
+                        // null
+                        .testResult(
+                                $("f0").bitmapFromBytes(),
+                                "BITMAP_FROM_BYTES(f0)",
+                                null,
+                                DataTypes.BITMAP())
+                        // empty
+                        .testResult(
+                                $("f1").bitmapFromBytes(),
+                                "BITMAP_FROM_BYTES(f1)",
+                                Bitmap.empty(),
+                                DataTypes.BITMAP())
+                        // normal cases
+                        .testResult(
+                                $("f2").bitmapFromBytes(),
+                                "BITMAP_FROM_BYTES(f2)",
+                                Bitmap.fromArray(new int[] {-1}),
+                                DataTypes.BITMAP())
+                        .testResult(
+                                $("f3").bitmapFromBytes(),
+                                "BITMAP_FROM_BYTES(f3)",
+                                Bitmap.fromArray(new int[] {1, 2, 3, -4}),
+                                DataTypes.BITMAP().notNull()),
+                TestSetSpec.forFunction(
+                                BuiltInFunctionDefinitions.BITMAP_FROM_BYTES, "Runtime Error")
+                        .onFieldsWithData("".getBytes(), "invalid".getBytes())
+                        .andDataTypes(DataTypes.BYTES(), DataTypes.BYTES())
+                        .testTableApiRuntimeError(
+                                $("f0").bitmapFromBytes(),
+                                TableRuntimeException.class,
+                                "Failed to deserialize bitmap from bytes:")
+                        .testSqlRuntimeError(
+                                "BITMAP_FROM_BYTES(f1)",
+                                TableRuntimeException.class,
+                                "Failed to deserialize bitmap from bytes:"),
+                TestSetSpec.forFunction(
+                                BuiltInFunctionDefinitions.BITMAP_FROM_BYTES, "Validation Error")
+                        .onFieldsWithData("{1,2}", new int[] {1, 2})
+                        .andDataTypes(DataTypes.STRING(), DataTypes.ARRAY(DataTypes.INT()))
+                        .testTableApiValidationError(
+                                $("f0").bitmapFromBytes(),
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_FROM_BYTES(bytes <BINARY_STRING>)")
+                        .testSqlValidationError(
+                                "BITMAP_FROM_BYTES(f1)",
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_FROM_BYTES(bytes <BINARY_STRING>)"));
+    }
+
     private Stream<TestSetSpec> bitmapLongCardinalityTestCases() {
         return Stream.of(
                 TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_LONG_CARDINALITY)
@@ -218,6 +286,46 @@ class BitmapFunctionsITCase extends BuiltInFunctionTestBase {
                                         + "BITMAP_TO_ARRAY(bitmap <BITMAP>)"));
     }
 
+    private Stream<TestSetSpec> bitmapToBytesTestCases() {
+        return Stream.of(
+                TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_TO_BYTES)
+                        .onFieldsWithData(
+                                new Integer[] {-1}, new Integer[] {Integer.MIN_VALUE, -1, 1, 2, 3})
+                        .andDataTypes(
+                                DataTypes.ARRAY(DataTypes.INT()),
+                                DataTypes.ARRAY(DataTypes.INT()).notNull())
+                        // TODO null test
+                        // empty
+                        .testResult(
+                                $("f0").arrayRemove(-1).bitmapBuild().bitmapToBytes(),
+                                "BITMAP_TO_BYTES(BITMAP_BUILD(ARRAY_REMOVE(f0, -1)))",
+                                toSerializedBytes(),
+                                DataTypes.BYTES())
+                        // normal cases
+                        .testResult(
+                                $("f0").bitmapBuild().bitmapToBytes(),
+                                "BITMAP_TO_BYTES(BITMAP_BUILD(f0))",
+                                toSerializedBytes(-1),
+                                DataTypes.BYTES())
+                        .testResult(
+                                $("f1").bitmapBuild().bitmapToBytes(),
+                                "BITMAP_TO_BYTES(BITMAP_BUILD(f1))",
+                                toSerializedBytes(1, 2, 3, Integer.MIN_VALUE, -1),
+                                DataTypes.BYTES().notNull()),
+                TestSetSpec.forFunction(
+                                BuiltInFunctionDefinitions.BITMAP_TO_BYTES, "Validation Error")
+                        .onFieldsWithData(1024, new int[] {1, 2})
+                        .andDataTypes(DataTypes.INT(), DataTypes.ARRAY(DataTypes.INT()))
+                        .testTableApiValidationError(
+                                $("f0").bitmapToBytes(),
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_TO_BYTES(bitmap <BITMAP>)")
+                        .testSqlValidationError(
+                                "BITMAP_TO_BYTES(f1)",
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_TO_BYTES(bitmap <BITMAP>)"));
+    }
+
     private Stream<TestSetSpec> bitmapToStringTestCases() {
         return Stream.of(
                 TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_TO_STRING)
@@ -256,5 +364,14 @@ class BitmapFunctionsITCase extends BuiltInFunctionTestBase {
                                 "BITMAP_TO_STRING(f1)",
                                 "Invalid input arguments. Expected signatures are:\n"
                                         + "BITMAP_TO_STRING(bitmap <BITMAP>)"));
+    }
+
+    // ~ Utils --------------------------------------------------------------------
+
+    private byte[] toSerializedBytes(int... values) {
+        RoaringBitmap rb = RoaringBitmap.bitmapOf(values);
+        ByteBuffer buffer = ByteBuffer.allocate(rb.serializedSizeInBytes());
+        rb.serialize(buffer);
+        return buffer.array();
     }
 }

@@ -78,8 +78,10 @@ import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BIN;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_BUILD;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_BUILD_AGG;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_CARDINALITY;
+import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_FROM_BYTES;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_LONG_CARDINALITY;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_TO_ARRAY;
+import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_TO_BYTES;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_TO_STRING;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BTRIM;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.CARDINALITY;
@@ -2554,6 +2556,19 @@ public abstract class BaseExpressions<InType, OutType> {
     }
 
     /**
+     * Converts an array of bytes to a bitmap.
+     *
+     * <p>Following the format defined in <a
+     * href="https://github.com/RoaringBitmap/RoaringFormatSpec">32-bit RoaringBitmap format
+     * specification</a>.
+     *
+     * @return a BITMAP expression
+     */
+    public OutType bitmapFromBytes() {
+        return toApiSpecificExpression(unresolvedCall(BITMAP_FROM_BYTES, toExpr()));
+    }
+
+    /**
      * Returns the 64-bit cardinality of a bitmap.
      *
      * @return a BIGINT expression
@@ -2569,6 +2584,19 @@ public abstract class BaseExpressions<InType, OutType> {
      */
     public OutType bitmapToArray() {
         return toApiSpecificExpression(unresolvedCall(BITMAP_TO_ARRAY, toExpr()));
+    }
+
+    /**
+     * Converts a bitmap to an array of bytes.
+     *
+     * <p>Following the format defined in <a
+     * href="https://github.com/RoaringBitmap/RoaringFormatSpec">32-bit RoaringBitmap format
+     * specification</a>.
+     *
+     * @return a BINARY expression
+     */
+    public OutType bitmapToBytes() {
+        return toApiSpecificExpression(unresolvedCall(BITMAP_TO_BYTES, toExpr()));
     }
 
     /**
