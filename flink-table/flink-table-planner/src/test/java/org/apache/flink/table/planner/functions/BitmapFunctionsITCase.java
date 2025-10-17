@@ -36,14 +36,115 @@ class BitmapFunctionsITCase extends BuiltInFunctionTestBase {
     @Override
     Stream<TestSetSpec> getTestSetSpecs() {
         return Stream.of(
+                        bitmapAndTestCases(),
+                        bitmapAndnotTestCases(),
                         bitmapBuildTestCases(),
                         bitmapCardinalityTestCases(),
                         bitmapFromBytesTestCases(),
                         bitmapLongCardinalityTestCases(),
+                        bitmapOrTestCases(),
                         bitmapToArrayTestCases(),
                         bitmapToBytesTestCases(),
-                        bitmapToStringTestCases())
+                        bitmapToStringTestCases(),
+                        bitmapXorTestCases())
                 .flatMap(s -> s);
+    }
+
+    private Stream<TestSetSpec> bitmapAndTestCases() {
+        return Stream.of(
+                TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_AND)
+                        .onFieldsWithData(
+                                null,
+                                toSerializedBytes(-1),
+                                toSerializedBytes(0, 2, 4, -4),
+                                toSerializedBytes(1, 2, 3, -4))
+                        .andDataTypes(
+                                DataTypes.BYTES(),
+                                DataTypes.BYTES(),
+                                DataTypes.BYTES().notNull(),
+                                DataTypes.BYTES().notNull())
+                        // null
+                        .testResult(
+                                $("f0").bitmapFromBytes().bitmapAnd($("f1").bitmapFromBytes()),
+                                "BITMAP_AND(BITMAP_FROM_BYTES(f0), BITMAP_FROM_BYTES(f1))",
+                                null,
+                                DataTypes.BITMAP())
+                        .testResult(
+                                $("f1").bitmapFromBytes().bitmapAnd($("f0").bitmapFromBytes()),
+                                "BITMAP_AND(BITMAP_FROM_BYTES(f1), BITMAP_FROM_BYTES(f0))",
+                                null,
+                                DataTypes.BITMAP())
+                        // normal cases
+                        .testResult(
+                                $("f1").bitmapFromBytes().bitmapAnd($("f2").bitmapFromBytes()),
+                                "BITMAP_AND(BITMAP_FROM_BYTES(f1), BITMAP_FROM_BYTES(f2))",
+                                Bitmap.empty(),
+                                DataTypes.BITMAP())
+                        .testResult(
+                                $("f2").bitmapFromBytes().bitmapAnd($("f3").bitmapFromBytes()),
+                                "BITMAP_AND(BITMAP_FROM_BYTES(f2), BITMAP_FROM_BYTES(f3))",
+                                Bitmap.fromArray(new int[] {2, -4}),
+                                DataTypes.BITMAP().notNull()),
+                TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_AND, "Validation Error")
+                        .onFieldsWithData("{1,2}", new int[] {1, 2})
+                        .andDataTypes(DataTypes.STRING(), DataTypes.ARRAY(DataTypes.INT()))
+                        .testTableApiValidationError(
+                                $("f0").bitmapAnd($("f1")),
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_AND(bitmap1 <BITMAP>, bitmap2 <BITMAP>)")
+                        .testSqlValidationError(
+                                "BITMAP_AND(f1, f0)",
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_AND(bitmap1 <BITMAP>, bitmap2 <BITMAP>)"));
+    }
+
+    private Stream<TestSetSpec> bitmapAndnotTestCases() {
+        return Stream.of(
+                TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_ANDNOT)
+                        .onFieldsWithData(
+                                null,
+                                toSerializedBytes(-1),
+                                toSerializedBytes(0, 2, 4, -4),
+                                toSerializedBytes(1, 2, 3, -4))
+                        .andDataTypes(
+                                DataTypes.BYTES(),
+                                DataTypes.BYTES(),
+                                DataTypes.BYTES().notNull(),
+                                DataTypes.BYTES().notNull())
+                        // null
+                        .testResult(
+                                $("f0").bitmapFromBytes().bitmapAndnot($("f1").bitmapFromBytes()),
+                                "BITMAP_ANDNOT(BITMAP_FROM_BYTES(f0), BITMAP_FROM_BYTES(f1))",
+                                null,
+                                DataTypes.BITMAP())
+                        .testResult(
+                                $("f1").bitmapFromBytes().bitmapAndnot($("f0").bitmapFromBytes()),
+                                "BITMAP_ANDNOT(BITMAP_FROM_BYTES(f1), BITMAP_FROM_BYTES(f0))",
+                                null,
+                                DataTypes.BITMAP())
+                        // normal cases
+                        .testResult(
+                                $("f1").bitmapFromBytes().bitmapAndnot($("f2").bitmapFromBytes()),
+                                "BITMAP_ANDNOT(BITMAP_FROM_BYTES(f1), BITMAP_FROM_BYTES(f2))",
+                                Bitmap.fromArray(new int[] {-1}),
+                                DataTypes.BITMAP())
+                        .testResult(
+                                $("f2").bitmapFromBytes().bitmapAndnot($("f3").bitmapFromBytes()),
+                                "BITMAP_ANDNOT(BITMAP_FROM_BYTES(f2), BITMAP_FROM_BYTES(f3))",
+                                Bitmap.fromArray(new int[] {0, 4}),
+                                DataTypes.BITMAP().notNull()),
+                TestSetSpec.forFunction(
+                                BuiltInFunctionDefinitions.BITMAP_ANDNOT, "Validation Error")
+                        .onFieldsWithData("{1,2}", new int[] {1, 2})
+                        .andDataTypes(DataTypes.STRING(), DataTypes.ARRAY(DataTypes.INT()))
+                        .testTableApiValidationError(
+                                $("f0").bitmapAndnot($("f1")),
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_ANDNOT(bitmap1 <BITMAP>, bitmap2 <BITMAP>)")
+                        .testSqlValidationError(
+                                "BITMAP_ANDNOT(f1, f0)",
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_ANDNOT(bitmap1 <BITMAP>, bitmap2 <BITMAP>)"));
     }
 
     private Stream<TestSetSpec> bitmapBuildTestCases() {
@@ -246,6 +347,54 @@ class BitmapFunctionsITCase extends BuiltInFunctionTestBase {
                                         + "BITMAP_LONG_CARDINALITY(bitmap <BITMAP>)"));
     }
 
+    private Stream<TestSetSpec> bitmapOrTestCases() {
+        return Stream.of(
+                TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_OR)
+                        .onFieldsWithData(
+                                null,
+                                toSerializedBytes(-1),
+                                toSerializedBytes(0, 2, 4, -4),
+                                toSerializedBytes(1, 2, 3, -4))
+                        .andDataTypes(
+                                DataTypes.BYTES(),
+                                DataTypes.BYTES(),
+                                DataTypes.BYTES().notNull(),
+                                DataTypes.BYTES().notNull())
+                        // null
+                        .testResult(
+                                $("f0").bitmapFromBytes().bitmapOr($("f1").bitmapFromBytes()),
+                                "BITMAP_OR(BITMAP_FROM_BYTES(f0), BITMAP_FROM_BYTES(f1))",
+                                null,
+                                DataTypes.BITMAP())
+                        .testResult(
+                                $("f1").bitmapFromBytes().bitmapOr($("f0").bitmapFromBytes()),
+                                "BITMAP_OR(BITMAP_FROM_BYTES(f1), BITMAP_FROM_BYTES(f0))",
+                                null,
+                                DataTypes.BITMAP())
+                        // normal cases
+                        .testResult(
+                                $("f1").bitmapFromBytes().bitmapOr($("f2").bitmapFromBytes()),
+                                "BITMAP_OR(BITMAP_FROM_BYTES(f1), BITMAP_FROM_BYTES(f2))",
+                                Bitmap.fromArray(new int[] {0, 2, 4, -4, -1}),
+                                DataTypes.BITMAP())
+                        .testResult(
+                                $("f2").bitmapFromBytes().bitmapOr($("f3").bitmapFromBytes()),
+                                "BITMAP_OR(BITMAP_FROM_BYTES(f2), BITMAP_FROM_BYTES(f3))",
+                                Bitmap.fromArray(new int[] {0, 1, 2, 3, 4, -4}),
+                                DataTypes.BITMAP().notNull()),
+                TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_OR, "Validation Error")
+                        .onFieldsWithData("{1,2}", new int[] {1, 2})
+                        .andDataTypes(DataTypes.STRING(), DataTypes.ARRAY(DataTypes.INT()))
+                        .testTableApiValidationError(
+                                $("f0").bitmapOr($("f1")),
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_OR(bitmap1 <BITMAP>, bitmap2 <BITMAP>)")
+                        .testSqlValidationError(
+                                "BITMAP_OR(f1, f0)",
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_OR(bitmap1 <BITMAP>, bitmap2 <BITMAP>)"));
+    }
+
     private Stream<TestSetSpec> bitmapToArrayTestCases() {
         return Stream.of(
                 TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_TO_ARRAY)
@@ -364,6 +513,54 @@ class BitmapFunctionsITCase extends BuiltInFunctionTestBase {
                                 "BITMAP_TO_STRING(f1)",
                                 "Invalid input arguments. Expected signatures are:\n"
                                         + "BITMAP_TO_STRING(bitmap <BITMAP>)"));
+    }
+
+    private Stream<TestSetSpec> bitmapXorTestCases() {
+        return Stream.of(
+                TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_XOR)
+                        .onFieldsWithData(
+                                null,
+                                toSerializedBytes(-1),
+                                toSerializedBytes(0, 2, 4, -4),
+                                toSerializedBytes(1, 2, 3, -4))
+                        .andDataTypes(
+                                DataTypes.BYTES(),
+                                DataTypes.BYTES(),
+                                DataTypes.BYTES().notNull(),
+                                DataTypes.BYTES().notNull())
+                        // null
+                        .testResult(
+                                $("f0").bitmapFromBytes().bitmapXor($("f1").bitmapFromBytes()),
+                                "BITMAP_XOR(BITMAP_FROM_BYTES(f0), BITMAP_FROM_BYTES(f1))",
+                                null,
+                                DataTypes.BITMAP())
+                        .testResult(
+                                $("f1").bitmapFromBytes().bitmapXor($("f0").bitmapFromBytes()),
+                                "BITMAP_XOR(BITMAP_FROM_BYTES(f1), BITMAP_FROM_BYTES(f0))",
+                                null,
+                                DataTypes.BITMAP())
+                        // normal cases
+                        .testResult(
+                                $("f1").bitmapFromBytes().bitmapXor($("f2").bitmapFromBytes()),
+                                "BITMAP_XOR(BITMAP_FROM_BYTES(f1), BITMAP_FROM_BYTES(f2))",
+                                Bitmap.fromArray(new int[] {0, 2, 4, -4, -1}),
+                                DataTypes.BITMAP())
+                        .testResult(
+                                $("f2").bitmapFromBytes().bitmapXor($("f3").bitmapFromBytes()),
+                                "BITMAP_XOR(BITMAP_FROM_BYTES(f2), BITMAP_FROM_BYTES(f3))",
+                                Bitmap.fromArray(new int[] {0, 1, 3, 4}),
+                                DataTypes.BITMAP().notNull()),
+                TestSetSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_XOR, "Validation Error")
+                        .onFieldsWithData("{1,2}", new int[] {1, 2})
+                        .andDataTypes(DataTypes.STRING(), DataTypes.ARRAY(DataTypes.INT()))
+                        .testTableApiValidationError(
+                                $("f0").bitmapXor($("f1")),
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_XOR(bitmap1 <BITMAP>, bitmap2 <BITMAP>)")
+                        .testSqlValidationError(
+                                "BITMAP_XOR(f1, f0)",
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_XOR(bitmap1 <BITMAP>, bitmap2 <BITMAP>)"));
     }
 
     // ~ Utils --------------------------------------------------------------------
