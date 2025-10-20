@@ -77,16 +77,19 @@ import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BETWEE
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BIN;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_AND;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_ANDNOT;
+import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_AND_AGG;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_BUILD;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_BUILD_AGG;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_CARDINALITY;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_FROM_BYTES;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_LONG_CARDINALITY;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_OR;
+import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_OR_AGG;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_TO_ARRAY;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_TO_BYTES;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_TO_STRING;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_XOR;
+import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BITMAP_XOR_AGG;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.BTRIM;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.CARDINALITY;
 import static org.apache.flink.table.functions.BuiltInFunctionDefinitions.CAST;
@@ -2557,6 +2560,15 @@ public abstract class BaseExpressions<InType, OutType> {
     }
 
     /**
+     * Computes the AND of multiple bitmaps.
+     *
+     * @return a BITMAP expression
+     */
+    public OutType bitmapAndAgg() {
+        return toApiSpecificExpression(unresolvedCall(BITMAP_AND_AGG, toExpr()));
+    }
+
+    /**
      * Creates a bitmap from a 32-bit integer array.
      *
      * @return a BITMAP expression
@@ -2618,6 +2630,15 @@ public abstract class BaseExpressions<InType, OutType> {
     }
 
     /**
+     * Computes the OR of multiple bitmaps.
+     *
+     * @return a BITMAP expression
+     */
+    public OutType bitmapOrAgg() {
+        return toApiSpecificExpression(unresolvedCall(BITMAP_OR_AGG, toExpr()));
+    }
+
+    /**
      * Converts a bitmap to an array of 32-bit integers.
      *
      * @return an ARRAY&lt;INT&gt; expression
@@ -2658,5 +2679,14 @@ public abstract class BaseExpressions<InType, OutType> {
     public OutType bitmapXor(InType bitmap2) {
         return toApiSpecificExpression(
                 unresolvedCall(BITMAP_XOR, toExpr(), objectToExpression(bitmap2)));
+    }
+
+    /**
+     * Computes the XOR of multiple bitmaps.
+     *
+     * @return a BITMAP expression
+     */
+    public OutType bitmapXorAgg() {
+        return toApiSpecificExpression(unresolvedCall(BITMAP_XOR_AGG, toExpr()));
     }
 }

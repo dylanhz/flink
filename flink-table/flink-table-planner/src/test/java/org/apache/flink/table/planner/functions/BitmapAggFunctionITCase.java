@@ -22,17 +22,23 @@ import org.apache.flink.table.functions.BuiltInFunctionDefinitions;
 import org.apache.flink.types.Row;
 import org.apache.flink.types.bitmap.Bitmap;
 
+import org.roaringbitmap.RoaringBitmap;
+
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static org.apache.flink.table.api.DataTypes.ARRAY;
 import static org.apache.flink.table.api.DataTypes.BIGINT;
 import static org.apache.flink.table.api.DataTypes.BITMAP;
+import static org.apache.flink.table.api.DataTypes.BYTES;
 import static org.apache.flink.table.api.DataTypes.INT;
 import static org.apache.flink.table.api.DataTypes.ROW;
 import static org.apache.flink.table.api.DataTypes.STRING;
 import static org.apache.flink.table.api.Expressions.$;
+import static org.apache.flink.table.api.Expressions.array;
 import static org.apache.flink.types.RowKind.DELETE;
 import static org.apache.flink.types.RowKind.INSERT;
 import static org.apache.flink.types.RowKind.UPDATE_AFTER;
@@ -43,7 +49,105 @@ class BitmapAggFunctionITCase extends BuiltInAggregateFunctionTestBase {
 
     @Override
     Stream<TestSpec> getTestCaseSpecs() {
-        return Stream.of(bitmapBuildAggTestCases()).flatMap(s -> s);
+        return Stream.of(
+                        bitmapAndAggTestCases(),
+                        bitmapBuildAggTestCases(),
+                        bitmapOrAggTestCases(),
+                        bitmapXorAggTestCases())
+                .flatMap(s -> s);
+    }
+
+    private Stream<TestSpec> bitmapAndAggTestCases() {
+        return Stream.of(
+                TestSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_AND_AGG)
+                        .withDescription("without retraction")
+                        .withSource(
+                                ROW(BYTES(), STRING()),
+                                Arrays.asList(
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 2, 3), "A"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 3, 4), "A"),
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 3, 5), "A"),
+                                        Row.ofKind(INSERT, null, "A"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 4, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 2, 4, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(4, 6, 8, 12, 16), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(-1, 0, 1), "C"),
+                                        Row.ofKind(INSERT, toSerializedBytes(-1, -2), "C"),
+                                        Row.ofKind(INSERT, null, "C")))
+                        .testResult(
+                                source ->
+                                        "SELECT f1, BITMAP_AND_AGG(BITMAP_FROM_BYTES(f0)) FROM "
+                                                + source
+                                                + " GROUP BY f1",
+                                TableApiAggSpec.groupBySelect(
+                                        Collections.singletonList($("f1")),
+                                        $("f1"),
+                                        $("f0").bitmapFromBytes().bitmapAndAgg()),
+                                ROW(STRING(), BITMAP().notNull()),
+                                ROW(STRING(), BITMAP().notNull()),
+                                Arrays.asList(
+                                        Row.of("A", Bitmap.fromArray(new int[] {3})),
+                                        Row.of("B", Bitmap.fromArray(new int[] {4, 6})),
+                                        Row.of("C", Bitmap.fromArray(new int[] {-1})))),
+                TestSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_AND_AGG)
+                        .withDescription("with retraction")
+                        .withSource(
+                                ROW(BYTES(), STRING()),
+                                Arrays.asList(
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 3, 5), "B"),
+                                        Row.ofKind(DELETE, toSerializedBytes(1, 3, 5), "B"),
+                                        Row.ofKind(INSERT, null, "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(-1, 0, 2, 3, 4), "B"),
+                                        Row.ofKind(
+                                                DELETE,
+                                                toSerializedBytes(2, 4, 6),
+                                                "B"), // count < 0
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 3, 4, 5, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 4, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 4, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 4, 7), "B"),
+                                        Row.ofKind(DELETE, toSerializedBytes(1, 4, 7), "B"),
+                                        Row.ofKind(UPDATE_BEFORE, toSerializedBytes(2, 4, 6), "B"),
+                                        Row.ofKind(UPDATE_AFTER, toSerializedBytes(3, 4, 5), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 3, 11), "C"),
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 5, 13), "C"),
+                                        Row.ofKind(INSERT, toSerializedBytes(-1, -3, 0), "C"),
+                                        Row.ofKind(INSERT, null, "C"),
+                                        Row.ofKind(DELETE, toSerializedBytes(-1, -3, 0), "C"),
+                                        Row.ofKind(DELETE, toSerializedBytes(1, 5, 13), "C"),
+                                        Row.ofKind(DELETE, null, "C"),
+                                        Row.ofKind(UPDATE_BEFORE, toSerializedBytes(2, 3, 11), "C"),
+                                        Row.ofKind(UPDATE_AFTER, toSerializedBytes(1, 2), "C")))
+                        .testResult(
+                                source ->
+                                        "SELECT f1, BITMAP_AND_AGG(BITMAP_FROM_BYTES(f0)) FROM "
+                                                + source
+                                                + " GROUP BY f1",
+                                TableApiAggSpec.groupBySelect(
+                                        Collections.singletonList($("f1")),
+                                        $("f1"),
+                                        $("f0").bitmapFromBytes().bitmapAndAgg()),
+                                ROW(STRING(), BITMAP().notNull()),
+                                ROW(STRING(), BITMAP().notNull()),
+                                Arrays.asList(
+                                        Row.of("B", Bitmap.fromArray(new int[] {3, 4})),
+                                        Row.of("C", Bitmap.fromArray(new int[] {1, 2})))),
+                TestSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_AND_AGG)
+                        .withDescription("Validation Error")
+                        .withSource(
+                                ROW(INT(), ARRAY(INT()), STRING()),
+                                List.of(Row.ofKind(INSERT, 1, array(1, 2), "A")))
+                        .testValidationError(
+                                source ->
+                                        "SELECT f2, BITMAP_AND_AGG(f0) FROM "
+                                                + source
+                                                + " GROUP BY f2",
+                                TableApiAggSpec.groupBySelect(
+                                        Collections.singletonList($("f2")),
+                                        $("f2"),
+                                        $("f1").bitmapAndAgg()),
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_AND_AGG(bitmap <BITMAP>)"));
     }
 
     private Stream<TestSpec> bitmapBuildAggTestCases() {
@@ -131,5 +235,207 @@ class BitmapAggFunctionITCase extends BuiltInAggregateFunctionTestBase {
                                         $("f0").bitmapBuildAgg()),
                                 "Invalid input arguments. Expected signatures are:\n"
                                         + "BITMAP_BUILD_AGG(value <INTEGER>)"));
+    }
+
+    private Stream<TestSpec> bitmapOrAggTestCases() {
+        return Stream.of(
+                TestSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_OR_AGG)
+                        .withDescription("without retraction")
+                        .withSource(
+                                ROW(BYTES(), STRING()),
+                                Arrays.asList(
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 2, 3), "A"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 3, 4), "A"),
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 3, 5), "A"),
+                                        Row.ofKind(INSERT, null, "A"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 4, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 2, 4, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(4, 6, 8, 12, 16), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(-1, 0, 1), "C"),
+                                        Row.ofKind(INSERT, toSerializedBytes(-1, -2), "C"),
+                                        Row.ofKind(INSERT, null, "C")))
+                        .testResult(
+                                source ->
+                                        "SELECT f1, BITMAP_OR_AGG(BITMAP_FROM_BYTES(f0)) FROM "
+                                                + source
+                                                + " GROUP BY f1",
+                                TableApiAggSpec.groupBySelect(
+                                        Collections.singletonList($("f1")),
+                                        $("f1"),
+                                        $("f0").bitmapFromBytes().bitmapOrAgg()),
+                                ROW(STRING(), BITMAP().notNull()),
+                                ROW(STRING(), BITMAP().notNull()),
+                                Arrays.asList(
+                                        Row.of("A", Bitmap.fromArray(new int[] {1, 2, 3, 4, 5})),
+                                        Row.of(
+                                                "B",
+                                                Bitmap.fromArray(
+                                                        new int[] {1, 2, 4, 6, 8, 12, 16})),
+                                        Row.of("C", Bitmap.fromArray(new int[] {0, 1, -2, -1})))),
+                TestSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_OR_AGG)
+                        .withDescription("with retraction")
+                        .withSource(
+                                ROW(BYTES(), STRING()),
+                                Arrays.asList(
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 3, 5), "B"),
+                                        Row.ofKind(DELETE, toSerializedBytes(1, 3, 5), "B"),
+                                        Row.ofKind(INSERT, null, "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(-1, 0, 2, 3, 4), "B"),
+                                        Row.ofKind(
+                                                DELETE,
+                                                toSerializedBytes(2, 4, 6),
+                                                "B"), // count < 0
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 3, 4, 5, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 4, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 4, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 4, 7), "B"),
+                                        Row.ofKind(DELETE, toSerializedBytes(1, 4, 7), "B"),
+                                        Row.ofKind(UPDATE_BEFORE, toSerializedBytes(2, 4, 6), "B"),
+                                        Row.ofKind(UPDATE_AFTER, toSerializedBytes(3, 4, 5), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 3, 11), "C"),
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 5, 13), "C"),
+                                        Row.ofKind(INSERT, toSerializedBytes(-1, -3, 0), "C"),
+                                        Row.ofKind(INSERT, null, "C"),
+                                        Row.ofKind(DELETE, toSerializedBytes(-1, -3, 0), "C"),
+                                        Row.ofKind(DELETE, toSerializedBytes(1, 5, 13), "C"),
+                                        Row.ofKind(DELETE, null, "C"),
+                                        Row.ofKind(UPDATE_BEFORE, toSerializedBytes(2, 3, 11), "C"),
+                                        Row.ofKind(UPDATE_AFTER, toSerializedBytes(1, 2), "C")))
+                        .testResult(
+                                source ->
+                                        "SELECT f1, BITMAP_OR_AGG(BITMAP_FROM_BYTES(f0)) FROM "
+                                                + source
+                                                + " GROUP BY f1",
+                                TableApiAggSpec.groupBySelect(
+                                        Collections.singletonList($("f1")),
+                                        $("f1"),
+                                        $("f0").bitmapFromBytes().bitmapOrAgg()),
+                                ROW(STRING(), BITMAP().notNull()),
+                                ROW(STRING(), BITMAP().notNull()),
+                                Arrays.asList(
+                                        Row.of(
+                                                "B",
+                                                Bitmap.fromArray(new int[] {0, 2, 3, 4, 5, 6, -1})),
+                                        Row.of("C", Bitmap.fromArray(new int[] {1, 2})))),
+                TestSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_OR_AGG)
+                        .withDescription("Validation Error")
+                        .withSource(
+                                ROW(INT(), ARRAY(INT()), STRING()),
+                                List.of(Row.ofKind(INSERT, 1, array(1, 2), "A")))
+                        .testValidationError(
+                                source ->
+                                        "SELECT f2, BITMAP_OR_AGG(f0) FROM "
+                                                + source
+                                                + " GROUP BY f2",
+                                TableApiAggSpec.groupBySelect(
+                                        Collections.singletonList($("f2")),
+                                        $("f2"),
+                                        $("f1").bitmapOrAgg()),
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_OR_AGG(bitmap <BITMAP>)"));
+    }
+
+    private Stream<TestSpec> bitmapXorAggTestCases() {
+        return Stream.of(
+                TestSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_XOR_AGG)
+                        .withDescription("without retraction")
+                        .withSource(
+                                ROW(BYTES(), STRING()),
+                                Arrays.asList(
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 2, 3), "A"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 3, 4), "A"),
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 3, 5), "A"),
+                                        Row.ofKind(INSERT, null, "A"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 4, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 2, 4, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(4, 6, 8, 12, 16), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(-1, 0, 1), "C"),
+                                        Row.ofKind(INSERT, toSerializedBytes(-1, -2), "C"),
+                                        Row.ofKind(INSERT, null, "C")))
+                        .testResult(
+                                source ->
+                                        "SELECT f1, BITMAP_XOR_AGG(BITMAP_FROM_BYTES(f0)) FROM "
+                                                + source
+                                                + " GROUP BY f1",
+                                TableApiAggSpec.groupBySelect(
+                                        Collections.singletonList($("f1")),
+                                        $("f1"),
+                                        $("f0").bitmapFromBytes().bitmapXorAgg()),
+                                ROW(STRING(), BITMAP().notNull()),
+                                ROW(STRING(), BITMAP().notNull()),
+                                Arrays.asList(
+                                        Row.of("A", Bitmap.fromArray(new int[] {3, 4, 5})),
+                                        Row.of(
+                                                "B",
+                                                Bitmap.fromArray(new int[] {1, 4, 6, 8, 12, 16})),
+                                        Row.of("C", Bitmap.fromArray(new int[] {0, 1, -2})))),
+                TestSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_XOR_AGG)
+                        .withDescription("with retraction")
+                        .withSource(
+                                ROW(BYTES(), STRING()),
+                                Arrays.asList(
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 3, 5), "B"),
+                                        Row.ofKind(DELETE, toSerializedBytes(1, 3, 5), "B"),
+                                        Row.ofKind(INSERT, null, "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(-1, 0, 2, 3, 4), "B"),
+                                        Row.ofKind(
+                                                DELETE,
+                                                toSerializedBytes(2, 4, 6),
+                                                "B"), // count < 0
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 3, 4, 5, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 4, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 4, 6), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 4, 7), "B"),
+                                        Row.ofKind(DELETE, toSerializedBytes(1, 4, 7), "B"),
+                                        Row.ofKind(UPDATE_BEFORE, toSerializedBytes(2, 4, 6), "B"),
+                                        Row.ofKind(UPDATE_AFTER, toSerializedBytes(3, 4, 5), "B"),
+                                        Row.ofKind(INSERT, toSerializedBytes(2, 3, 11), "C"),
+                                        Row.ofKind(INSERT, toSerializedBytes(1, 5, 13), "C"),
+                                        Row.ofKind(INSERT, toSerializedBytes(-1, -3, 0), "C"),
+                                        Row.ofKind(INSERT, null, "C"),
+                                        Row.ofKind(DELETE, toSerializedBytes(-1, -3, 0), "C"),
+                                        Row.ofKind(DELETE, toSerializedBytes(1, 5, 13), "C"),
+                                        Row.ofKind(DELETE, null, "C"),
+                                        Row.ofKind(UPDATE_BEFORE, toSerializedBytes(2, 3, 11), "C"),
+                                        Row.ofKind(UPDATE_AFTER, toSerializedBytes(1, 2), "C")))
+                        .testResult(
+                                source ->
+                                        "SELECT f1, BITMAP_XOR_AGG(BITMAP_FROM_BYTES(f0)) FROM "
+                                                + source
+                                                + " GROUP BY f1",
+                                TableApiAggSpec.groupBySelect(
+                                        Collections.singletonList($("f1")),
+                                        $("f1"),
+                                        $("f0").bitmapFromBytes().bitmapXorAgg()),
+                                ROW(STRING(), BITMAP().notNull()),
+                                ROW(STRING(), BITMAP().notNull()),
+                                Arrays.asList(
+                                        Row.of("B", Bitmap.fromArray(new int[] {0, 3, 4, 6, -1})),
+                                        Row.of("C", Bitmap.fromArray(new int[] {1, 2})))),
+                TestSpec.forFunction(BuiltInFunctionDefinitions.BITMAP_XOR_AGG)
+                        .withDescription("Validation Error")
+                        .withSource(
+                                ROW(INT(), ARRAY(INT()), STRING()),
+                                List.of(Row.ofKind(INSERT, 1, array(1, 2), "A")))
+                        .testValidationError(
+                                source ->
+                                        "SELECT f2, BITMAP_XOR_AGG(f0) FROM "
+                                                + source
+                                                + " GROUP BY f2",
+                                TableApiAggSpec.groupBySelect(
+                                        Collections.singletonList($("f2")),
+                                        $("f2"),
+                                        $("f1").bitmapXorAgg()),
+                                "Invalid input arguments. Expected signatures are:\n"
+                                        + "BITMAP_XOR_AGG(bitmap <BITMAP>)"));
+    }
+
+    // ~ Utils --------------------------------------------------------------------
+
+    private byte[] toSerializedBytes(int... values) {
+        RoaringBitmap rb = RoaringBitmap.bitmapOf(values);
+        ByteBuffer buffer = ByteBuffer.allocate(rb.serializedSizeInBytes());
+        rb.serialize(buffer);
+        return buffer.array();
     }
 }
